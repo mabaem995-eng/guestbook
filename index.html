@@ -285,10 +285,6 @@ function initDisplay(){
   }
 
   function delP(el,k){
-    // 핀번호 확인
-    const pin=prompt('관리자 PIN을 입력하세요:');
-    if(pin===null)return; // 취소
-    if(pin!=='0819'){alert('PIN이 올바르지 않습니다.');return;}
     const i=polEls.indexOf(el);if(i>=0)polEls.splice(i,1);
     const ri=rects.findIndex(r=>r.id===k);if(ri>=0)rects.splice(ri,1);
     el.classList.add('rm');setTimeout(()=>el.remove(),500);delete kMap[k];
@@ -369,7 +365,7 @@ function initDisplay(){
     nm.textContent=label;div.appendChild(nm);
 
     const dbtn=document.createElement('button');dbtn.className='db';dbtn.textContent='✕';
-    dbtn.addEventListener('click',e=>{e.stopPropagation();delP(div,k)});div.appendChild(dbtn);
+    dbtn.addEventListener('click',e=>{e.stopPropagation();const pin=prompt('관리자 PIN을 입력하세요:');if(pin===null)return;if(pin!=='0819'){alert('PIN이 올바르지 않습니다.');return;}delP(div,k)});div.appendChild(dbtn);
 
     // Drag instead of click
     initDrag(div,k);
