@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>창녕군청소년수련관 개관 10주년 디지털 방명록</title>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&family=Noto+Sans+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{width:100vw;min-height:100vh;overflow-x:hidden;font-family:'Noto Sans KR',sans-serif;user-select:none}
+
+/* MODE SELECTOR */
+.mode-selector{min-height:100vh;min-height:100dvh;background:#F5F0EB;display:flex;align-items:center;justify-content:center}
+.ms-wrap{position:relative;width:100%;max-width:800px;margin:0 auto}
+.ms-bg{width:100%;display:block}
+.ms-btns{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);display:flex;gap:14px;z-index:2}
+.mode-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border:1.5px solid rgba(0,0,0,.08);border-radius:14px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);color:#333;cursor:pointer;transition:all .3s;text-decoration:none;box-shadow:0 2px 12px rgba(0,0,0,.08);white-space:nowrap}
+.mode-btn:hover,.mode-btn:active{background:rgba(255,255,255,.95);border-color:rgba(196,80,48,.3);transform:scale(1.03)}
+.mode-btn .icon{font-size:1.3rem}
+.mode-btn .label{font-weight:700;font-size:clamp(.82rem,2.2vw,1rem);color:#C45030}
+
+/* DISPLAY */
+.display-mode{display:none;width:100vw;height:100vh;overflow:hidden;background:#E8E4E0;position:relative}
+.display-mode.active{display:flex;align-items:center;justify-content:center}
+.tv-frame{position:relative;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;overflow:hidden;background:#F5F0EB url('bg.png') center center/cover no-repeat}
+.pol-layer{position:absolute;top:0;left:0;right:0;bottom:0;z-index:10;pointer-events:none}
+
+/* Polaroid - base size, will be dynamically scaled */
+.polaroid{position:absolute;background:white;padding-bottom:0;border-radius:2px;cursor:grab;pointer-events:auto;transform-origin:center;animation:pd .7s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0;transition:box-shadow .3s;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.08)}
+.polaroid:hover{box-shadow:0 8px 25px rgba(0,0,0,.2);z-index:50}
+.polaroid.dragging{cursor:grabbing;z-index:999;box-shadow:0 12px 35px rgba(0,0,0,.3);transition:none}
+.polaroid .p-inner{padding:min(.5vw,.89vh);padding-bottom:0}
+.polaroid .pa{width:100%;aspect-ratio:1;border-radius:1px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}
+.polaroid .pm{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:6%;text-align:center}
+.polaroid .pm span{font-family:'Nanum Pen Script',cursive;font-size:min(1vw,1.78vh);color:#333;line-height:1.4;word-break:break-all;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.polaroid .pi{width:100%;height:100%;object-fit:cover}
+.polaroid .pn{font-family:'Nanum Pen Script',cursive;color:#666;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:min(.3vw,.5vh) min(.5vw,.89vh) min(.5vw,.89vh)}
+.polaroid .db{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;z-index:60}
+.polaroid:hover .db{opacity:1}
+.polaroid .db:hover{background:rgba(220,50,50,.8)}
+@keyframes pd{0%{opacity:0;transform:scale(.3) translateY(-30px)}60%{opacity:1}100%{opacity:1;transform:scale(1) translateY(0)}}
+.polaroid.rm{animation:prm .5s ease-in forwards}
+@keyframes prm{to{opacity:0;transform:scale(.5) translateY(-20px)}}
+
+/* Highlight */
+.hl-ov{position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s;backdrop-filter:blur(6px)}
+.hl-ov.active{opacity:1;pointer-events:auto}
+.hl-p{background:#fff;width:min(28vw,50vh);padding:min(1.5vw,2.67vh) min(1.5vw,2.67vh) min(4vw,7.1vh);border-radius:3px;box-shadow:0 15px 50px rgba(0,0,0,.3);transform:scale(.5) rotate(-5deg);transition:transform .5s cubic-bezier(.34,1.56,.64,1);position:relative}
+.hl-ov.active .hl-p{transform:scale(1) rotate(2deg)}
+.hl-ph{width:100%;aspect-ratio:1;border-radius:1px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hl-ph .hm{font-family:'Nanum Pen Script',cursive;font-size:min(2.5vw,4.4vh);color:#222;line-height:1.5;text-align:center;padding:min(1vw,1.78vh);word-break:break-all}
+.hl-ph .hi{width:100%;height:100%;object-fit:cover}
+.hl-n{position:absolute;bottom:min(.8vw,1.4vh);left:min(1.5vw,2.67vh);right:min(1.5vw,2.67vh);font-family:'Nanum Pen Script',cursive;font-size:min(1.5vw,2.67vh);color:#888;text-align:center}
+.hl-t{position:absolute;bottom:0;left:0;height:3px;background:rgba(0,0,0,.1);border-radius:0 0 3px 0;animation:hls 3s linear forwards}
+@keyframes hls{to{width:0}}
+.d-ctr{position:absolute;bottom:min(1.5vw,2.7vh);right:min(2vw,3.6vh);z-index:100;font-family:'Do Hyeon',sans-serif;font-size:min(1.1vw,2vh);color:rgba(90,62,43,.35);letter-spacing:2px}
+.d-ctr .cnt{font-size:min(1.6vw,2.8vh);color:rgba(90,62,43,.5);margin-right:3px}
+.emp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Do Hyeon',sans-serif;color:rgba(90,62,43,.12);font-size:min(1.5vw,2.7vh);letter-spacing:5px;pointer-events:none;transition:opacity 1s;z-index:4}
+
+/* Date on TV handled by bg image */
+.nf{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,rgba(255,255,255,.25),transparent 60%);pointer-events:none;z-index:200;animation:nfa .8s ease-out forwards}
+@keyframes nfa{to{opacity:0}}
+
+/* Toolbar buttons */
+.toolbar{position:absolute;bottom:min(1.5vw,2.7vh);left:min(2vw,3.6vh);z-index:100;display:flex;gap:8px}
+.tb-btn{padding:min(.6vw,1vh) min(1.2vw,2.1vh);border:1.5px solid rgba(90,62,43,.2);border-radius:8px;background:rgba(255,255,255,.75);backdrop-filter:blur(4px);font-family:'Noto Sans KR',sans-serif;font-size:min(.85vw,1.5vh);font-weight:500;color:#5A3E2B;cursor:pointer;transition:all .2s;text-decoration:none;display:flex;align-items:center;gap:min(.4vw,.7vh)}
+.tb-btn:hover{background:rgba(255,255,255,.95);border-color:rgba(196,80,48,.3)}
+
+/* INPUT */
+.input-mode{display:none;min-height:100vh;background:#F5F0EB url('bg.png') center center/cover no-repeat fixed;position:relative}
+.input-mode.active{display:block}
+.input-mode::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.25);pointer-events:none;z-index:0}
+.i-hd{position:relative;z-index:1;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);padding:24px 24px 18px;text-align:center;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center}
+.i-hd .hd-center{flex:1}
+.i-hd .hs{font-size:.65rem;color:rgba(90,62,43,.4);letter-spacing:7px}
+.i-hd .hm-t{font-family:'Black Han Sans',sans-serif;font-size:1.6rem;color:#C45030;letter-spacing:4px;margin-top:3px}
+.i-hd .hd-d{font-size:.8rem;color:rgba(90,62,43,.5);margin-top:5px}
+
+/* Nav button */
+.nav-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:6px;padding:10px 18px;margin:0 8px;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;background:rgba(255,255,255,.7);backdrop-filter:blur(4px);font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:600;color:#5A3E2B;cursor:pointer;transition:all .2s;text-decoration:none;white-space:nowrap;flex-shrink:0}
+.nav-btn:hover,.nav-btn:active{background:rgba(255,255,255,.95);border-color:rgba(196,80,48,.3)}
+
+.fw{max-width:560px;margin:0 auto;padding:20px 20px 40px;position:relative;z-index:1}
+.ti-icon{text-align:center;margin:8px 0 18px;font-size:1rem;color:rgba(196,80,48,.3);letter-spacing:6px}
+.fg{margin-bottom:18px}
+.fl{display:block;font-weight:600;font-size:.82rem;color:#5A3E2B;margin-bottom:7px;letter-spacing:1px}
+.fl .opt{color:rgba(90,62,43,.35);font-weight:400;font-size:.75rem;margin-left:4px}
+
+.tinp{width:100%;padding:13px 15px;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:1rem;color:#333;background:rgba(255,255,255,.85);backdrop-filter:blur(4px);outline:none;transition:border-color .3s,box-shadow .3s}
+.tinp:focus{border-color:#C45030;box-shadow:0 0 0 3px rgba(196,80,48,.1)}
+.tinp::placeholder{color:rgba(90,62,43,.55);font-weight:400}
+
+.mt{display:flex;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1.5px solid rgba(90,62,43,.15);background:rgba(255,255,255,.6)}
+.mtb{flex:1;padding:11px 8px;font-size:.82rem;font-weight:500;text-align:center;color:rgba(90,62,43,.5);background:transparent;border:none;cursor:pointer;transition:all .3s;font-family:'Noto Sans KR',sans-serif}
+.mtb.active{background:#C45030;color:#fff;font-weight:700}
+.mtb:not(.active):active{background:rgba(0,0,0,.05)}
+
+.mta{width:100%;height:150px;padding:13px 15px;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;font-family:'Gaegu',cursive;font-size:1.2rem;color:#333;background:rgba(255,255,255,.85);backdrop-filter:blur(4px);outline:none;resize:none;line-height:1.6;transition:border-color .3s,box-shadow .3s}
+.mta:focus{border-color:#C45030;box-shadow:0 0 0 3px rgba(196,80,48,.1)}
+.mta::placeholder{color:rgba(90,62,43,.5);font-family:'Noto Sans KR',sans-serif;font-size:.95rem;font-weight:400}
+
+.cw,.cmw{display:none;flex-direction:column;gap:8px}
+.cw.active,.cmw.active{display:flex}
+.cc{position:relative;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;overflow:hidden;background:#fff;touch-action:none}
+.dc{display:block;width:100%;cursor:crosshair}
+.cph{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(90,62,43,.4);font-size:.9rem;font-weight:500;pointer-events:none;transition:opacity .3s}
+.c-tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.c-btn{padding:7px 12px;border:1px solid rgba(90,62,43,.15);border-radius:8px;background:rgba(255,255,255,.7);font-size:.76rem;color:#5A3E2B;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.c-btn:active{background:rgba(196,80,48,.1);transform:scale(.96)}
+.pc,.pss{display:flex;gap:5px;align-items:center}
+.pcl{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .2s}
+.pcl.active{border-color:#C45030;transform:scale(1.15);box-shadow:0 0 0 2px rgba(196,80,48,.2)}
+.psl{width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(90,62,43,.2);background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.psl.active{border-color:#C45030;background:rgba(196,80,48,.1)}
+.psl .dot{border-radius:50%;background:#5A3E2B}
+
+.cpv{position:relative;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.cpv video{width:100%;height:100%;object-fit:cover;display:block}
+.cpv .ci{width:100%;height:100%;object-fit:cover;display:none}
+.cbs{display:flex;gap:8px}
+.cmb{flex:1;padding:12px;border:none;border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s}
+.cmb:active{transform:scale(.97)}
+.cmb.sh{background:#C45030;color:#fff}
+.cmb.rt{background:rgba(90,62,43,.1);color:#5A3E2B}
+.cmb:disabled{opacity:.4;cursor:not-allowed}
+.cmi{width:100%;padding:10px 13px;border:1.5px solid rgba(90,62,43,.15);border-radius:8px;font-family:'Gaegu',cursive;font-size:1.1rem;color:#333;background:rgba(255,255,255,.85);outline:none;margin-top:4px}
+.cmi:focus{border-color:#C45030}
+.cmi::placeholder{color:rgba(90,62,43,.45);font-family:'Noto Sans KR',sans-serif;font-size:.85rem}
+
+.sbtn{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#C45030,#A03820);color:#fff;font-family:'Black Han Sans',sans-serif;font-size:1.1rem;letter-spacing:4px;cursor:pointer;transition:all .3s;box-shadow:0 4px 15px rgba(196,80,48,.3);margin-top:8px}
+.sbtn:active{transform:scale(.98)}
+.sbtn:disabled{opacity:.5;cursor:not-allowed}
+.chc{text-align:right;font-size:.72rem;color:rgba(90,62,43,.3);margin-top:3px}
+.chc.warn{color:#C45030}
+.sov{position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(90,62,43,.92);opacity:0;pointer-events:none;transition:opacity .5s;backdrop-filter:blur(8px)}
+.sov.active{opacity:1;pointer-events:auto}
+.s-icon{font-size:4.5rem;margin-bottom:14px;animation:sb .6s cubic-bezier(.34,1.56,.64,1)}
+.s-text{font-family:'Black Han Sans',sans-serif;font-size:1.8rem;color:#fff;letter-spacing:4px}
+.s-sub{font-size:.92rem;color:rgba(255,255,255,.6);margin-top:6px}
+@keyframes sb{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+.lsp{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="mode-selector" id="modeSelector">
+  <div class="ms-wrap">
+    <img class="ms-bg" src="bg_main.png" alt="">
+    <div class="ms-btns">
+      <a class="mode-btn" href="?mode=display"><span class="icon">📺</span><span class="label">방명록 보기</span></a>
+      <a class="mode-btn" href="?mode=input"><span class="icon">✏️</span><span class="label">방명록 쓰기</span></a>
+    </div>
+  </div>
+</div>
+
+<div class="display-mode" id="displayMode">
+  <div class="tv-frame" id="tvFrame">
+    <div class="pol-layer" id="polLayer"></div>
+    <div class="hl-ov" id="hlOv"><div class="hl-p" id="hlP"><div class="hl-ph" id="hlPh"></div><div class="hl-n" id="hlN"></div></div></div>
+    <div class="d-ctr"><span class="cnt" id="cntNum">0</span>명의 축하 메시지</div>
+    <div class="emp" id="empH">📷 축하 메시지를 남겨주세요</div>
+    <div class="toolbar">
+      <button class="tb-btn" onclick="downloadWord()">📄 Word 다운로드</button>
+      <a class="tb-btn" href="?mode=input">✏️ 방명록 작성</a>
+    </div>
+  </div>
+</div>
+
+<div class="input-mode" id="inputMode">
+  <div class="i-hd">
+    <div class="hd-center">
+      <div class="hs">CHANGNYEONG YOUTH CENTER</div>
+      <div class="hm-t">개관 10주년 축하 방명록</div>
+      <div class="hd-d">소중한 축하 메시지를 남겨주세요 🌸</div>
+    </div>
+    <a class="nav-btn" href="?mode=display">📺 방명록 보기</a>
+  </div>
+  <div class="fw">
+    <div class="ti-icon">✿ ✿ ✿</div>
+    <div class="fg"><label class="fl">이름 <span class="opt">(선택)</span></label><input type="text" class="tinp" id="nameInput" placeholder="이름을 입력해주세요" maxlength="20" autocomplete="off"></div>
+    <div class="fg">
+      <label class="fl">축하 메시지</label>
+      <div class="mt">
+        <button class="mtb active" id="tabT" onclick="switchMode('typing')">⌨️ 타이핑</button>
+        <button class="mtb" id="tabD" onclick="switchMode('drawing')">✍️ 손글씨</button>
+        <button class="mtb" id="tabC" onclick="switchMode('camera')">📸 사진</button>
+      </div>
+      <div id="typArea"><textarea class="mta" id="msgTA" placeholder="축하 메시지를 자유롭게 작성해주세요 ✨" maxlength="150"></textarea><div class="chc" id="chc">0 / 150</div></div>
+      <div class="cw" id="drArea">
+        <div class="cc"><canvas class="dc" id="drCvs"></canvas><div class="cph" id="cvsPh">✍️ 여기에 손글씨로 작성해주세요</div></div>
+        <div class="c-tools">
+          <div class="pc"><div class="pcl active" style="background:#333" data-color="#333" onclick="setPC(this)"></div><div class="pcl" style="background:#1565C0" data-color="#1565C0" onclick="setPC(this)"></div><div class="pcl" style="background:#C45030" data-color="#C45030" onclick="setPC(this)"></div><div class="pcl" style="background:#2E7D32" data-color="#2E7D32" onclick="setPC(this)"></div></div>
+          <div class="pss"><div class="psl" data-size="2" onclick="setPS(this)"><div class="dot" style="width:4px;height:4px"></div></div><div class="psl active" data-size="4" onclick="setPS(this)"><div class="dot" style="width:6px;height:6px"></div></div><div class="psl" data-size="8" onclick="setPS(this)"><div class="dot" style="width:10px;height:10px"></div></div></div>
+          <button class="c-btn" onclick="clrCvs()">🗑 지우기</button><button class="c-btn" onclick="undoCvs()">↩ 되돌리기</button>
+        </div>
+      </div>
+      <div class="cmw" id="camArea">
+        <div class="cpv" id="camPv"><video id="camVid" autoplay playsinline muted></video><img class="ci" id="capImg"></div>
+        <div class="cbs"><button class="cmb sh" id="shBtn" onclick="takePhoto()">📸 촬영</button><button class="cmb rt" id="rtBtn" onclick="retakePhoto()" disabled>🔄 다시 찍기</button></div>
+        <input type="text" class="cmi" id="camMsg" placeholder="한마디 남기기 (선택)" maxlength="50">
+      </div>
+    </div>
+    <button class="sbtn" id="subBtn" onclick="submit()">🌸 축하 메시지 보내기</button>
+  </div>
+  <div class="sov" id="sucOv"><div class="s-icon">🎉</div><div class="s-text">감사합니다!</div><div class="s-sub">축하 메시지가 전시 화면에 등록되었습니다</div></div>
+</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyATpGn3eijSYr2JkuczR1gK5I83AFsZxMo",authDomain:"guestbook-eda6e.firebaseapp.com",databaseURL:"https://guestbook-eda6e-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"guestbook-eda6e",storageBucket:"guestbook-eda6e.firebasestorage.app",messagingSenderId:"176805659452",appId:"1:176805659452:web:b6735e9544152af0e69439"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database(),gbRef=db.ref('guestbook');
+const COLORS=['#FFF8E7','#FFF0F3','#F0F7FF','#F0FFF0','#F8F0FF','#FFF5F0'];
+function rndCol(){return COLORS[Math.floor(Math.random()*COLORS.length)]}
+
+const prm=new URLSearchParams(location.search),pageMode=prm.get('mode');
+if(pageMode==='display'){document.getElementById('modeSelector').style.display='none';document.getElementById('displayMode').classList.add('active');initDisplay()}
+else if(pageMode==='input'){document.getElementById('modeSelector').style.display='none';document.getElementById('inputMode').classList.add('active');initInput()}
+
+/* ======== DISPLAY ======== */
+function initDisplay(){
+  let actx=null;
+  const tvF=document.getElementById('tvFrame'),polL=document.getElementById('polLayer');
+  const cntN=document.getElementById('cntNum'),empH=document.getElementById('empH');
+  const hlOv=document.getElementById('hlOv'),hlP=document.getElementById('hlP');
+  const hlPh=document.getElementById('hlPh'),hlNm=document.getElementById('hlN');
+  let hlT=null;const rects=[],polEls=[],kMap={};let tot=0;
+  const allEntries=[];
+  const MAX_DISPLAY=50;
+  const BASE_SIZE_VW=11; // base polaroid width in vw%
+
+  function ia(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)()}
+  document.addEventListener('click',()=>ia(),{once:true});
+  function pop(){ia();const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.setValueAtTime(660,t);o.frequency.exponentialRampToValueAtTime(1200,t+.1);g.gain.setValueAtTime(.1,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+.4)}
+
+  // Dynamic size: shrink when over 50
+  function getPolSize(){
+    const count=polEls.length;
+    if(count<=MAX_DISPLAY) return BASE_SIZE_VW;
+    // Shrink progressively: min 6vw at 100+ items
+    const shrink=Math.min((count-MAX_DISPLAY)*0.08, 5);
+    return Math.max(BASE_SIZE_VW-shrink, 6);
+  }
+
+  function resizeAll(){
+    const sz=getPolSize();
+    polEls.forEach(el=>{
+      el.style.width=`min(${sz}vw, ${sz*1.78}vh)`;
+      const fs=sz/BASE_SIZE_VW;
+      el.querySelector('.pn').style.fontSize=`min(${.75*fs}vw, ${1.33*fs}vh)`;
+      const sp=el.querySelector('.pm span');
+      if(sp) sp.style.fontSize=`min(${1*fs}vw, ${1.78*fs}vh)`;
+    });
+  }
+
+  function isInCenter(x,y,w,h,fw,fh){
+    const cx1=fw*.28,cx2=fw*.72,cy1=fh*.15,cy2=fh*.85;
+    return !(x+w<cx1||x>cx2||y+h<cy1||y>cy2);
+  }
+
+  function findPos(n){
+    const fw=tvF.offsetWidth,fh=tvF.offsetHeight;
+    const sz=getPolSize();
+    const pw=fw*sz/100,ph=pw*1.35,m=fw*.5/100;
+    for(let i=0;i<n;i++){
+      const x=m+Math.random()*(fw-pw-m*2),y=m+Math.random()*(fh-ph-m*2);
+      if(isInCenter(x,y,pw,ph,fw,fh))continue;
+      const r={x,y,w:pw,h:ph};let ov=false;
+      for(const p of rects){if(r.x<p.x+p.w+m&&r.x+r.w+m>p.x&&r.y<p.y+p.h+m&&r.y+r.h+m>p.y){ov=true;break}}
+      if(!ov)return{r,xP:x/fw*100,yP:y/fh*100}
+    }
+    // Fallback: edges
+    const side=Math.floor(Math.random()*4);let x,y;
+    const fw2=tvF.offsetWidth,fh2=tvF.offsetHeight;
+    const pw2=fw2*sz/100,ph2=pw2*1.35;
+    if(side===0){x=m+Math.random()*(fw2*.22);y=m+Math.random()*(fh2-ph2-m*2)}
+    else if(side===1){x=fw2*.75+Math.random()*(fw2*.2-pw2);y=m+Math.random()*(fh2-ph2-m*2)}
+    else if(side===2){x=m+Math.random()*(fw2-pw2-m*2);y=m+Math.random()*(fh2*.12)}
+    else{x=m+Math.random()*(fw2-pw2-m*2);y=fh2*.85+Math.random()*(fh2*.12)}
+    x=Math.max(m,Math.min(x,fw2-pw2-m));y=Math.max(m,Math.min(y,fh2-ph2-m));
+    return{r:{x,y,w:pw2,h:ph2},xP:x/fw2*100,yP:y/fh2*100}
+  }
+
+  function delP(el,k){
+    const i=polEls.indexOf(el);if(i>=0)polEls.splice(i,1);
+    const ri=rects.findIndex(r=>r.id===k);if(ri>=0)rects.splice(ri,1);
+    el.classList.add('rm');setTimeout(()=>el.remove(),500);delete kMap[k];
+    gbRef.child(k).remove();tot=Math.max(0,tot-1);cntN.textContent=tot;
+    // Resize remaining after delete
+    setTimeout(resizeAll,600);
+  }
+
+  // Drag functionality
+  function initDrag(div,k){
+    let isDragging=false,startX,startY,origLeft,origTop,moved=false;
+
+    function onDown(e){
+      if(e.target.classList.contains('db'))return; // don't drag on delete btn
+      isDragging=true;moved=false;
+      div.classList.add('dragging');
+      const rect=div.getBoundingClientRect();
+      const tvRect=tvF.getBoundingClientRect();
+      origLeft=rect.left-tvRect.left;
+      origTop=rect.top-tvRect.top;
+      const pt=e.touches?e.touches[0]:e;
+      startX=pt.clientX;startY=pt.clientY;
+      e.preventDefault();
+    }
+    function onMove(e){
+      if(!isDragging)return;
+      const pt=e.touches?e.touches[0]:e;
+      const dx=pt.clientX-startX,dy=pt.clientY-startY;
+      if(Math.abs(dx)>3||Math.abs(dy)>3)moved=true;
+      const fw=tvF.offsetWidth,fh=tvF.offsetHeight;
+      const newL=Math.max(0,Math.min(origLeft+dx,fw-div.offsetWidth));
+      const newT=Math.max(0,Math.min(origTop+dy,fh-div.offsetHeight));
+      div.style.left=newL/fw*100+'%';
+      div.style.top=newT/fh*100+'%';
+      div.style.transform='rotate(0deg)';
+      // Update rect
+      const ri=rects.findIndex(r=>r.id===k);
+      if(ri>=0){rects[ri].x=newL;rects[ri].y=newT}
+      e.preventDefault();
+    }
+    function onUp(e){
+      if(!isDragging)return;
+      isDragging=false;div.classList.remove('dragging');
+      // If didn't move much, treat as click → show highlight
+      if(!moved){
+        const d=allEntries.find(en=>en.key===k);
+        if(d)showHL(d);
+      }
+    }
+    div.addEventListener('pointerdown',onDown);
+    document.addEventListener('pointermove',onMove);
+    document.addEventListener('pointerup',onUp);
+  }
+
+  function mkPol(k,d,anim){
+    const pos=findPos(300),rot=(Math.random()-.5)*16;
+    const sz=getPolSize();
+    rects.push({...pos.r,id:k});tot++;cntN.textContent=tot;if(tot>0)empH.style.opacity='0';
+
+    const div=document.createElement('div');div.className='polaroid';div.dataset.k=k;
+    div.style.width=`min(${sz}vw, ${sz*1.78}vh)`;
+    div.style.left=pos.xP+'%';div.style.top=pos.yP+'%';
+    if(!anim){div.style.animation='none';div.style.opacity='1'}
+    setTimeout(()=>{if(!div.classList.contains('dragging'))div.style.transform='rotate('+rot+'deg)'},anim?700:0);
+
+    const inner=document.createElement('div');inner.className='p-inner';
+    const pa=document.createElement('div');pa.className='pa';pa.style.background=d.color||rndCol();
+    if((d.type==='camera'||d.type==='drawing')&&d.imageData){
+      const img=document.createElement('img');img.className='pi';img.src=d.imageData;pa.appendChild(img);
+    }else{
+      const md2=document.createElement('div');md2.className='pm';
+      const s=document.createElement('span');s.textContent=d.message||'';md2.appendChild(s);pa.appendChild(md2);
+    }
+    inner.appendChild(pa);div.appendChild(inner);
+
+    const nm=document.createElement('div');nm.className='pn';
+    let label=d.name||'익명';if(d.cameraMsg)label+=' · '+d.cameraMsg;
+    nm.textContent=label;div.appendChild(nm);
+
+    const dbtn=document.createElement('button');dbtn.className='db';dbtn.textContent='✕';
+    dbtn.addEventListener('click',e=>{e.stopPropagation();const pin=prompt('관리자 PIN을 입력하세요:');if(pin===null)return;if(pin!=='0819'){alert('PIN이 올바르지 않습니다.');return;}delP(div,k)});div.appendChild(dbtn);
+
+    // Drag instead of click
+    initDrag(div,k);
+
+    polL.appendChild(div);polEls.push(div);kMap[k]=div;
+
+    // Resize all if over limit
+    if(polEls.length>MAX_DISPLAY) resizeAll();
+
+    if(anim){pop();const f=document.createElement('div');f.className='nf';tvF.appendChild(f);setTimeout(()=>f.remove(),800);showHL(d)}
+  }
+
+  function showHL(d){
+    if(hlT)clearTimeout(hlT);hlPh.innerHTML='';
+    if((d.type==='camera'||d.type==='drawing')&&d.imageData){
+      const img=document.createElement('img');img.className='hi';img.src=d.imageData;hlPh.appendChild(img);hlPh.style.background='#fff';
+    }else{
+      const div=document.createElement('div');div.className='hm';div.textContent=d.message||'';hlPh.appendChild(div);hlPh.style.background=d.color||rndCol();
+    }
+    let label=d.name||'익명';if(d.cameraMsg)label+=' · '+d.cameraMsg;
+    hlNm.textContent=label;
+    const old=hlP.querySelector('.hl-t');if(old)old.remove();
+    const t=document.createElement('div');t.className='hl-t';t.style.width='100%';hlP.appendChild(t);
+    hlOv.classList.add('active');hlT=setTimeout(()=>hlOv.classList.remove('active'),3000);
+  }
+  hlOv.addEventListener('click',()=>{if(hlT)clearTimeout(hlT);hlOv.classList.remove('active')});
+
+  let init=true;const loaded=new Set();
+  gbRef.orderByChild('timestamp').on('child_added',s=>{
+    const k=s.key,d=s.val();if(loaded.has(k))return;loaded.add(k);
+    allEntries.push({key:k,...d});mkPol(k,d,!init);
+  });
+  setTimeout(()=>{init=false},2500);
+
+  gbRef.on('child_removed',s=>{
+    const k=s.key,el=kMap[k];
+    if(el){const i=polEls.indexOf(el);if(i>=0)polEls.splice(i,1);const ri=rects.findIndex(r=>r.id===k);if(ri>=0)rects.splice(ri,1);el.classList.add('rm');setTimeout(()=>el.remove(),500);delete kMap[k]}
+    const ei=allEntries.findIndex(e=>e.key===k);if(ei>=0)allEntries.splice(ei,1);
+    setTimeout(resizeAll,600);
+  });
+
+  // Word download
+  window.downloadWord=function(){
+    if(!allEntries.length){alert('아직 메시지가 없습니다.');return}
+    const sorted=[...allEntries].sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+    let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>방명록</title>
+<style>body{font-family:'맑은 고딕',sans-serif;padding:30px}h1{text-align:center;color:#C45030;font-size:22pt;margin-bottom:5px}h2{text-align:center;color:#666;font-size:12pt;font-weight:normal;margin-bottom:30px}table{width:100%;border-collapse:collapse}th{background:#C45030;color:white;padding:10px 12px;font-size:10pt;border:1px solid #A03820;text-align:center}td{padding:10px 12px;border:1px solid #ddd;font-size:10pt;vertical-align:middle}tr:nth-child(even){background:#FBF8F5}.num{text-align:center;width:40px;color:#888}.name{width:80px;font-weight:bold;color:#5A3E2B}.type{width:60px;text-align:center;color:#888}.msg{color:#333}.time{width:100px;text-align:center;color:#888;font-size:9pt}.img-note{color:#999;font-style:italic}</style></head><body>
+<h1>🌸 창녕군청소년수련관 개관 10주년 축하 방명록</h1>
+<h2>총 ${sorted.length}명의 축하 메시지</h2>
+<table><tr><th>번호</th><th>이름</th><th>유형</th><th>메시지</th><th>시간</th></tr>`;
+    sorted.forEach((e,i)=>{
+      const name=e.name||'익명';
+      const time=e.timestamp?new Date(e.timestamp).toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      let typeStr='타이핑',msgStr=e.message||'';
+      if(e.type==='drawing'){typeStr='손글씨';msgStr='<span class="img-note">[손글씨 이미지]</span>'}
+      if(e.type==='camera'){typeStr='사진';msgStr=e.cameraMsg||'<span class="img-note">[사진]</span>'}
+      html+=`<tr><td class="num">${i+1}</td><td class="name">${name}</td><td class="type">${typeStr}</td><td class="msg">${msgStr}</td><td class="time">${time}</td></tr>`;
+    });
+    html+=`</table></body></html>`;
+    const blob=new Blob(['\ufeff'+html],{type:'application/msword'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download='10주년_축하방명록_'+new Date().toISOString().slice(0,10)+'.doc';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  };
+
+  (async()=>{try{if('wakeLock' in navigator)await navigator.wakeLock.request('screen')}catch(e){}})();
+  document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible')try{if('wakeLock' in navigator)await navigator.wakeLock.request('screen')}catch(e){}});
+}
+
+/* ======== INPUT ======== */
+function initInput(){
+  let curMode='typing',isDr=false,lx=0,ly=0,pCol='#333',pSz=4;
+  let strokes=[],curSt=[],hasDr=false,isSub=false;
+  let camStr=null,capData=null;
+  const cvs=document.getElementById('drCvs'),cx=cvs.getContext('2d');
+  const ta=document.getElementById('msgTA'),chcEl=document.getElementById('chc');
+  const vid=document.getElementById('camVid'),cimg=document.getElementById('capImg');
+
+  // Canvas: use square aspect ratio to match polaroid display
+  const CVS_H=280;
+
+  window.switchMode=function(m){
+    curMode=m;
+    document.getElementById('tabT').classList.toggle('active',m==='typing');
+    document.getElementById('tabD').classList.toggle('active',m==='drawing');
+    document.getElementById('tabC').classList.toggle('active',m==='camera');
+    document.getElementById('typArea').style.display=m==='typing'?'block':'none';
+    document.getElementById('drArea').classList.toggle('active',m==='drawing');
+    document.getElementById('camArea').classList.toggle('active',m==='camera');
+    if(m==='drawing')resCvs();
+    if(m==='camera')startCam();else stopCam();
+  };
+
+  async function startCam(){
+    if(camStr)return;
+    try{camStr=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    vid.srcObject=camStr;vid.style.display='block';cimg.style.display='none';
+    capData=null;document.getElementById('rtBtn').disabled=true;document.getElementById('shBtn').textContent='📸 촬영';
+    }catch(e){alert('카메라를 사용할 수 없습니다.\n카메라 권한을 허용해주세요.')}
+  }
+  function stopCam(){if(camStr){camStr.getTracks().forEach(t=>t.stop());camStr=null;vid.srcObject=null}}
+
+  window.takePhoto=function(){
+    if(!camStr){startCam();return}
+    const c=document.createElement('canvas');c.width=640;c.height=480;
+    const x2=c.getContext('2d');x2.translate(640,0);x2.scale(-1,1);x2.drawImage(vid,0,0,640,480);
+    capData=c.toDataURL('image/jpeg',0.5);
+    cimg.src=capData;cimg.style.display='block';vid.style.display='none';
+    document.getElementById('rtBtn').disabled=false;document.getElementById('shBtn').textContent='✅ 촬영완료';
+  };
+  window.retakePhoto=function(){capData=null;cimg.style.display='none';vid.style.display='block';document.getElementById('rtBtn').disabled=true;document.getElementById('shBtn').textContent='📸 촬영'};
+
+  // Canvas: use full width, square-ish height for better drawing area
+  function resCvs(){
+    const r=cvs.parentElement.getBoundingClientRect();
+    const d=devicePixelRatio||1;
+    const w=r.width, h=CVS_H;
+    cvs.width=w*d;cvs.height=h*d;
+    cvs.style.height=h+'px';
+    cx.scale(d,d);cx.lineCap='round';cx.lineJoin='round';
+    redraw();
+  }
+  function gp(e){const r=cvs.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top}}
+  function sd(e){e.preventDefault();isDr=true;const p=gp(e);lx=p.x;ly=p.y;curSt=[{x:p.x,y:p.y,c:pCol,s:pSz}];hasDr=true;document.getElementById('cvsPh').style.opacity='0'}
+  function dr(e){e.preventDefault();if(!isDr)return;const p=gp(e);cx.beginPath();cx.strokeStyle=pCol;cx.lineWidth=pSz;cx.moveTo(lx,ly);cx.lineTo(p.x,p.y);cx.stroke();curSt.push({x:p.x,y:p.y,c:pCol,s:pSz});lx=p.x;ly=p.y}
+  function ed(){if(isDr&&curSt.length>0){strokes.push([...curSt]);curSt=[]}isDr=false}
+  cvs.addEventListener('pointerdown',sd);cvs.addEventListener('pointermove',dr);cvs.addEventListener('pointerup',ed);cvs.addEventListener('pointerleave',ed);cvs.addEventListener('pointercancel',ed);
+  cvs.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});cvs.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+
+  function redraw(){
+    const d=devicePixelRatio||1;
+    cx.clearRect(0,0,cvs.width/d,cvs.height/d);
+    strokes.forEach(st=>{for(let i=1;i<st.length;i++){cx.beginPath();cx.strokeStyle=st[i].c;cx.lineWidth=st[i].s;cx.moveTo(st[i-1].x,st[i-1].y);cx.lineTo(st[i].x,st[i].y);cx.stroke()}});
+  }
+  window.clrCvs=function(){strokes=[];const d=devicePixelRatio||1;cx.clearRect(0,0,cvs.width/d,cvs.height/d);hasDr=false;document.getElementById('cvsPh').style.opacity='1'};
+  window.undoCvs=function(){if(strokes.length>0){strokes.pop();redraw();if(!strokes.length){hasDr=false;document.getElementById('cvsPh').style.opacity='1'}}};
+  window.setPC=function(el){document.querySelectorAll('.pcl').forEach(c=>c.classList.remove('active'));el.classList.add('active');pCol=el.dataset.color};
+  window.setPS=function(el){document.querySelectorAll('.psl').forEach(c=>c.classList.remove('active'));el.classList.add('active');pSz=parseInt(el.dataset.size)};
+  ta.addEventListener('input',()=>{const l=ta.value.length;chcEl.textContent=l+' / 150';chcEl.classList.toggle('warn',l>130)});
+
+  window.submit=async function(){
+    if(isSub)return;
+    const name=document.getElementById('nameInput').value.trim();
+    let entry={name:name||'익명',color:rndCol(),timestamp:firebase.database.ServerValue.TIMESTAMP};
+
+    if(curMode==='typing'){
+      const msg=ta.value.trim();if(!msg){shk(ta);ta.focus();return}
+      entry.type='text';entry.message=msg;
+    }else if(curMode==='drawing'){
+      if(!hasDr||!strokes.length){shk(cvs.parentElement);return}
+      entry.type='drawing';
+      // Export canvas as square image to prevent cropping
+      const cw=cvs.width,ch=cvs.height;
+      const d=devicePixelRatio||1;
+      const realW=cw/d, realH=ch/d;
+      const tc=document.createElement('canvas');
+      // Use square output matching polaroid aspect
+      const outSize=400;
+      tc.width=outSize;tc.height=outSize;
+      const tx=tc.getContext('2d');
+      tx.fillStyle='white';tx.fillRect(0,0,outSize,outSize);
+      // Scale drawing to fit in square, centered
+      const scale=Math.min(outSize/realW, outSize/realH)*0.9;
+      const offX=(outSize-realW*scale)/2;
+      const offY=(outSize-realH*scale)/2;
+      tx.save();tx.translate(offX,offY);tx.scale(scale,scale);
+      // Redraw strokes onto export canvas
+      tx.lineCap='round';tx.lineJoin='round';
+      strokes.forEach(st=>{for(let i=1;i<st.length;i++){tx.beginPath();tx.strokeStyle=st[i].c;tx.lineWidth=st[i].s;tx.moveTo(st[i-1].x,st[i-1].y);tx.lineTo(st[i].x,st[i].y);tx.stroke()}});
+      tx.restore();
+      entry.imageData=tc.toDataURL('image/jpeg',0.7);
+    }else if(curMode==='camera'){
+      if(!capData){shk(document.getElementById('camPv'));return}
+      entry.type='camera';entry.imageData=capData;
+      const cm=document.getElementById('camMsg').value.trim();if(cm)entry.cameraMsg=cm;
+    }
+
+    isSub=true;const btn=document.getElementById('subBtn');btn.disabled=true;
+    btn.innerHTML='<span class="lsp"></span> 보내는 중...';
+    try{await gbRef.push(entry);
+      const so=document.getElementById('sucOv');so.classList.add('active');
+      setTimeout(()=>{so.classList.remove('active');resetForm()},2500);
+    }catch(err){alert('전송 실패! 인터넷 연결을 확인해주세요.')}
+    finally{isSub=false;btn.disabled=false;btn.innerHTML='🌸 축하 메시지 보내기'}
+  };
+
+  function resetForm(){document.getElementById('nameInput').value='';ta.value='';chcEl.textContent='0 / 150';chcEl.classList.remove('warn');clrCvs();retakePhoto();document.getElementById('camMsg').value='';switchMode('typing')}
+  function shk(el){el.style.animation='none';el.offsetHeight;el.style.animation='shake .4s ease';setTimeout(()=>el.style.animation='',400)}
+  addEventListener('resize',()=>{if(curMode==='drawing')resCvs()});setTimeout(resCvs,100);
+}
+</script>
+</body>
+</html>
