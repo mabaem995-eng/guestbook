@@ -76,17 +76,12 @@ body{width:100vw;min-height:100vh;overflow-x:hidden;font-family:'Noto Sans KR',s
 .input-mode.active{display:flex;flex-direction:column}
 .input-mode::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.3);pointer-events:none;z-index:0}
 
-.i-hd{position:relative;z-index:1;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);padding:16px 24px;display:flex;align-items:center;border-bottom:1px solid rgba(0,0,0,.06);flex-shrink:0}
-.i-hd .hd-center{flex:1;text-align:center;padding-right:60px}
-.i-hd .hs{font-size:.75rem;color:rgba(90,62,43,.4);letter-spacing:6px}
-.i-hd .hm-t{font-family:'Black Han Sans',sans-serif;font-size:1.8rem;color:#C45030;letter-spacing:4px;margin-top:2px}
-.i-hd .hd-d{font-size:.95rem;color:rgba(90,62,43,.5);margin-top:3px}
-
-.nav-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;background:rgba(255,255,255,.7);backdrop-filter:blur(4px);font-family:'Noto Sans KR',sans-serif;font-size:.78rem;font-weight:600;color:#5A3E2B;cursor:pointer;transition:all .2s;text-decoration:none;white-space:nowrap;flex-shrink:0}
-.nav-btn:hover,.nav-btn:active{background:rgba(255,255,255,.95);border-color:rgba(196,80,48,.3)}
+/* No header - floating nav button */
+.nav-float{position:fixed;top:12px;right:12px;z-index:100;display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:1.5px solid rgba(90,62,43,.15);border-radius:10px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);font-family:'Noto Sans KR',sans-serif;font-size:.82rem;font-weight:600;color:#5A3E2B;cursor:pointer;transition:all .2s;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.nav-float:hover,.nav-float:active{background:rgba(255,255,255,.95);border-color:rgba(196,80,48,.3)}
 
 /* Main form area - fills entire screen */
-.fw{flex:1;display:flex;flex-direction:column;width:100%;padding:12px 24px calc(12px + env(safe-area-inset-bottom, 0px));position:relative;z-index:1;overflow:hidden}
+.fw{flex:1;display:flex;flex-direction:column;width:100%;padding:14px 24px calc(12px + env(safe-area-inset-bottom, 0px));position:relative;z-index:1;overflow:hidden}
 .i-row{display:flex;gap:12px;align-items:flex-end;flex-shrink:0;margin-bottom:10px}
 .i-row .fg{flex:1;margin:0}
 .fl{display:block;font-weight:600;font-size:.82rem;color:#5A3E2B;margin-bottom:5px;letter-spacing:1px}
@@ -179,14 +174,7 @@ body{width:100vw;min-height:100vh;overflow-x:hidden;font-family:'Noto Sans KR',s
 </div>
 
 <div class="input-mode" id="inputMode">
-  <div class="i-hd">
-    <div class="hd-center">
-      <div class="hs">CHANGNYEONG YOUTH CENTER</div>
-      <div class="hm-t">개관 10주년 축하 방명록</div>
-      <div class="hd-d">소중한 축하 메시지를 남겨주세요 🌸</div>
-    </div>
-    <a class="nav-btn" href="?mode=display">📺 방명록 보기</a>
-  </div>
+  <a class="nav-float" href="?mode=display">📺 방명록 보기</a>
   <div class="fw">
     <div class="i-row">
       <div class="fg"><label class="fl">이름 <span class="opt">(선택)</span></label><input type="text" class="tinp" id="nameInput" placeholder="이름을 입력해주세요" maxlength="20" autocomplete="off"></div>
